@@ -14,6 +14,7 @@ from copy import deepcopy
 
 import torchvision.transforms
 from skimage import io
+import imageio.v2 as iio
 import os
 from glob import glob
 from typing import Tuple, List, Optional
@@ -209,8 +210,30 @@ class LargeScaleJitter(object):
         crop_size = (min(self.desired_size, scaled_size[0]), min(self.desired_size, scaled_size[1]))
         margin_h = max(scaled_size[0] - crop_size[0], 0)
         margin_w = max(scaled_size[1] - crop_size[1], 0)
-        offset_h = np.random.randint(0, margin_h + 1)
-        offset_w = np.random.randint(0, margin_w + 1)
+
+        # try to keep foreground in view; sample around a positive pixel if available
+        offset_h = offset_w = 0
+        fg_coords = np.argwhere(scaled_label > 0.5)
+        if fg_coords.size > 0:
+            # pick a random foreground pixel and center crop around it (clamped to image)
+            y, x = fg_coords[np.random.randint(0, len(fg_coords))]
+            min_h = max(0, y - crop_size[0] + 1)
+            max_h = min(y, margin_h)
+            min_w = max(0, x - crop_size[1] + 1)
+            max_w = min(x, margin_w)
+            if max_h < min_h:
+                offset_h = max_h  # fall back to max possible
+            else:
+                offset_h = np.random.randint(min_h, max_h + 1) if max_h > min_h else min_h
+            if max_w < min_w:
+                offset_w = max_w
+            else:
+                offset_w = np.random.randint(min_w, max_w + 1) if max_w > min_w else min_w
+        else:
+            # no foreground; keep random crop but avoid fully deterministic positions
+            offset_h = np.random.randint(0, margin_h + 1) if margin_h > 0 else 0
+            offset_w = np.random.randint(0, margin_w + 1) if margin_w > 0 else 0
+
         crop_y1, crop_y2 = offset_h, offset_h + crop_size[0]
         crop_x1, crop_x2 = offset_w, offset_w + crop_size[1]
 
@@ -585,9 +608,17 @@ class OnlineDataset(Dataset):
         im_path = self.dataset["im_path"][idx]
         gt_path = self.dataset["gt_path"][idx]
         im_name = self.dataset["im_name"][idx]
-        im = io.imread(im_path)
-        gt_ori = io.imread(gt_path)
-        if 'TextSeg' in self.dataset_name:
+        try:
+            im = iio.imread(im_path)
+        except Exception as exc:
+            raise OSError(f"Failed to read image: {im_path} ({exc})")
+        try:
+            gt_ori = iio.imread(gt_path)
+        except Exception as exc:
+            raise OSError(f"Failed to read mask: {gt_path} ({exc})")
+        # Only the TextSeg benchmark uses 100 as foreground. Avoid catching
+        # other dataset names (e.g., CrelloTextSeg, LiCATextSeg).
+        if self.dataset_name.startswith('TextSeg'):
             gt = (gt_ori == 100).astype(np.uint8) * 255
         elif 'COCO_TS' in self.dataset_name:
             gt = (gt_ori > 0).astype(np.uint8) * 255

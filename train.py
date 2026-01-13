@@ -547,16 +547,27 @@ def train(
     if misc.is_main_process():
         # Quick sanity check: save a few samples from the first training batch (post-augmentation).
         try:
-            first_batch = next(iter(train_dataloaders))
-            imgs = first_batch.get("image")
-            lbls = first_batch.get("label")
-            if imgs is not None and lbls is not None:
-                max_save = min(len(imgs), 8)
-                for idx in range(max_save):
-                    img_np = tensor_to_uint8_image(imgs[idx])
-                    mask_bool = mask_tensor_to_bool(lbls[idx], threshold=0.5)
-                    save_path = os.path.join(train_preview_dir, f"sample_{idx:02d}.png")
+            # Save up to 100 previews from several early batches without consuming
+            # the main training iterator (new iterator here).
+            saved = 0
+            preview_iter = iter(train_dataloaders)
+            while saved < 100:
+                try:
+                    batch = next(preview_iter)
+                except StopIteration:
+                    break
+                imgs = batch.get("image")
+                lbls = batch.get("label")
+                if imgs is None or lbls is None:
+                    continue
+                for b_idx in range(len(imgs)):
+                    if saved >= 100:
+                        break
+                    img_np = tensor_to_uint8_image(imgs[b_idx])
+                    mask_bool = mask_tensor_to_bool(lbls[b_idx], threshold=0.5)
+                    save_path = os.path.join(train_preview_dir, f"sample_{saved:02d}.png")
                     save_pair_visualization(img_np, mask_bool, save_path, pair=True)
+                    saved += 1
         except Exception as exc:
             print(f"[warning] Failed to save train preview batch: {exc}")
 
