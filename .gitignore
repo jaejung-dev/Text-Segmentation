@@ -1,0 +1,39 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+.conda/
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Training outputs and logs
+work_dirs/
+evaluation_results/
+runs/
+logs/
+*.log
+tb_logs/
+lightning_logs/
+
+# Checkpoints / large weights
+pretrained_checkpoint/
+!pretrained_checkpoint/put checkpoints here.txt
+
+*.pth
+*.pt
+*.ckpt
+*.bin
+
+# Notebooks
+.ipynb_checkpoints/
+

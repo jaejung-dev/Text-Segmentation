@@ -353,6 +353,91 @@ class RandomBlur(object):
             return sample
 
 
+class AddGaussianNoise(object):
+    """
+    Additive Gaussian noise for image only (keeps masks untouched).
+    """
+    def __init__(self, p=0.2, std_range=(5.0, 15.0)):
+        self.p = p
+        self.std_range = std_range
+
+    def __call__(self, sample):
+        if random.random() > self.p:
+            return sample
+        image = sample['image'].astype(np.float32)
+        std = random.uniform(*self.std_range)
+        noise = np.random.normal(0.0, std, size=image.shape).astype(np.float32)
+        image = np.clip(image + noise, 0.0, 255.0)
+        sample['image'] = image
+        return sample
+
+
+class AddISONoise(object):
+    """
+    ISO-like noise: intensity-dependent shot noise + small read noise.
+    """
+    def __init__(self, p=0.2, shot_range=(0.0005, 0.003), read_std_range=(2.0, 6.0)):
+        self.p = p
+        self.shot_range = shot_range
+        self.read_std_range = read_std_range
+
+    def __call__(self, sample):
+        if random.random() > self.p:
+            return sample
+        image = sample['image'].astype(np.float32)
+        shot = random.uniform(*self.shot_range)
+        read_std = random.uniform(*self.read_std_range)
+        noise_std = np.sqrt(np.maximum(image, 0.0) * shot) + read_std
+        noise = np.random.normal(0.0, noise_std, size=image.shape).astype(np.float32)
+        image = np.clip(image + noise, 0.0, 255.0)
+        sample['image'] = image
+        return sample
+
+
+class RandomJPEGCompression(object):
+    """
+    Apply JPEG compression artifacts with given probability.
+    """
+    def __init__(self, p=0.2, quality_range=(30, 90)):
+        self.p = p
+        self.quality_range = quality_range
+
+    def __call__(self, sample):
+        if random.random() > self.p:
+            return sample
+        image = sample['image'].astype(np.float32)
+        q = int(random.uniform(*self.quality_range))
+        img_uint8 = np.clip(image, 0, 255).astype(np.uint8)
+        ok, encoded = cv2.imencode('.jpg', img_uint8, [int(cv2.IMWRITE_JPEG_QUALITY), q])
+        if not ok:
+            return sample
+        decoded = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+        if decoded is None:
+            return sample
+        sample['image'] = decoded.astype(np.float32)
+        return sample
+
+
+class WeakGaussianBlur(object):
+    """
+    Very mild Gaussian blur to improve robustness to slight defocus.
+    """
+    def __init__(self, p=0.1, kernel_sizes=(3, 5), sigma_range=(0.1, 0.8)):
+        self.p = p
+        self.kernel_sizes = kernel_sizes
+        self.sigma_range = sigma_range
+
+    def __call__(self, sample):
+        if random.random() > self.p:
+            return sample
+        image = sample['image']
+        k = random.choice(self.kernel_sizes)
+        sigma = random.uniform(*self.sigma_range)
+        image = cv2.GaussianBlur(image, (k, k), sigmaX=sigma, sigmaY=sigma)
+        sample['image'] = image
+        return sample
+
+
 def _setup_size(size, error_msg):
     if isinstance(size, numbers.Number):
         return int(size), int(size)
@@ -577,6 +662,10 @@ class OnlineDataset(Dataset):
 
 train_transforms = [
     ColorJitter(),  # image: np.uint8->np.float32
+    AddGaussianNoise(p=0.2, std_range=(5.0, 15.0)),
+    AddISONoise(p=0.2, shot_range=(0.0005, 0.003), read_std_range=(2.0, 6.0)),
+    RandomJPEGCompression(p=0.2, quality_range=(30, 90)),
+    WeakGaussianBlur(p=0.1, kernel_sizes=(3, 5), sigma_range=(0.1, 0.8)),
     RandomRotate(),
     LargeScaleJitter(),
     ToTensor()
