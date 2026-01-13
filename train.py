@@ -315,7 +315,7 @@ def get_args_parser():
     parser.add_argument('--lr_drop_epoch', default=70, type=int)
     parser.add_argument('--max_epoch_num', default=70, type=int)
     parser.add_argument('--input_size', default=[1024, 1024], type=list)
-    parser.add_argument('--batch_size_train', default=1, type=int)
+    parser.add_argument('--batch_size_train', default=8, type=int)
     parser.add_argument('--batch_size_valid', default=1, type=int)
     parser.add_argument('--valid_period', default=1, type=int)
     parser.add_argument('--model_save_fre', default=100, type=int)
