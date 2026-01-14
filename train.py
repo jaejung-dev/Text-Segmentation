@@ -334,13 +334,13 @@ def get_args_parser():
     parser.add_argument('--attn_layers', default=1, type=int,
                         help='The number of image to token cross attention layers in model_aligner')
     parser.add_argument('--prompt_len', default=12, type=int, help='The number of prompt token')
-    parser.add_argument('--crello_root', type=str, default="/home/ubuntu/jjseol/data/data/crello_Hi-SAM",
+    parser.add_argument('--crello_root', type=str, default="/mnt/local/crello_Hi-SAM",
                         help='Root directory for the Crello Hi-SAM dataset.')
-    parser.add_argument('--lica_root', type=str, default="/home/ubuntu/jjseol/data/data/lica_Hi-SAM",
+    parser.add_argument('--lica_root', type=str, default="/mnt/local/lica_Hi-SAM",
                         help='Root directory for the LiCA Hi-SAM dataset.')
-    parser.add_argument('--lica_test_im_dir', type=str, default="/home/ubuntu/jjseol/data/data/text_segmentation_dataset/val_images",
+    parser.add_argument('--lica_test_im_dir', type=str, default="/home/ubuntu/data/text_segmentation_dataset/val_images",
                         help='Image directory for the LiCA shared test split.')
-    parser.add_argument('--lica_test_gt_dir', type=str, default="/home/ubuntu/jjseol/data/data/text_segmentation_dataset/vali_gt",
+    parser.add_argument('--lica_test_gt_dir', type=str, default="/home/ubuntu/data/text_segmentation_dataset/vali_gt",
                         help='Mask directory for the LiCA shared test split.')
     parser.add_argument('--test_preview_limit', type=int, default=50,
                         help='Number of qualitative predictions to store per test dataset (0 disables).')
