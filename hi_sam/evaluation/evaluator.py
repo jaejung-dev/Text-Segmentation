@@ -43,6 +43,16 @@ class Evaluator():
         self._predictions = []
         self._hr_predictions = []
 
+    @staticmethod
+    def _as_bool_mask(mask: np.ndarray) -> np.ndarray:
+        if mask.dtype == np.bool_:
+            return mask
+        if np.issubdtype(mask.dtype, np.floating):
+            # If logits are present, threshold at 0. Otherwise assume probs in [0,1].
+            thresh = 0.0 if mask.min() < 0 else 0.5
+            return mask > thresh
+        return mask.astype(bool)
+
     def process(self, predictions, hr_predictions, gts, ignore_mask=None):
         assert predictions.shape[0] == 1, "Only support one batch per GPU now."
         assert predictions.shape == gts.shape
@@ -55,6 +65,8 @@ class Evaluator():
             pred = pred.squeeze(0).to(self._cpu_device).detach().numpy()  # h, w
             hr_pred = hr_pred.squeeze(0).to(self._cpu_device).detach().numpy()  # h, w
             gt = gt.squeeze(0).to(self._cpu_device).detach().numpy()
+            pred = self._as_bool_mask(pred)
+            hr_pred = self._as_bool_mask(hr_pred)
 
             img_result_dict = self.get_IandU(pred, gt)
             pn = self.label_count(pred)

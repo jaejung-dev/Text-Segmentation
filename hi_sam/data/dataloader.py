@@ -630,6 +630,9 @@ class OnlineDataset(Dataset):
             im = im[:, :, np.newaxis]
         if im.shape[2] == 1:
             im = np.repeat(im, 3, axis=2)
+        elif im.shape[2] > 3:
+            # Drop extra channels (e.g., RGBA -> RGB) to keep 3-channel inputs.
+            im = im[:, :, :3]
         sample = {
             "imidx": torch.from_numpy(np.array(idx)),
             "image": im,
@@ -682,7 +685,7 @@ class OnlineDataset(Dataset):
 
         if self.eval_ori_resolution:
             sample["ori_label"] = torch.unsqueeze(torch.from_numpy(gt), 0)
-            if 'TextSeg' in self.dataset_name:
+            if self.dataset_name.startswith('TextSeg'):
                 ignore_mask = (gt_ori == 255).astype(np.uint8) * 255
                 sample["ignore_mask"] = torch.unsqueeze(torch.from_numpy(ignore_mask), 0)
             sample['ori_im_path'] = self.dataset["im_path"][idx]
